@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>El Impostor</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <h1>El Impostor</h1>
+    <div id="setup">
+        <label>Jugadores (separados por coma):</label>
+        <input type="text" id="jugadores" placeholder="Ana,Luis,Marta,Juan">
+        <br>
+        <label>Categoría:</label>
+        <select id="categoria">
+            <option value="futbol general">Futbol general</option>
+            <option value="futbol argentino">Futbol argentino</option>
+            <option value="futbol retro">Futbol retro</option>
+            <option value="seleccion argentina">Seleccion argentina</option>
+            <option value="champions league">Champions league</option>
+            <option value="libertadores">Libertadores</option>
+        </select>
+        <br>
+        <button onclick="iniciarJuego()">Iniciar Juego</button>
+    </div>
+    <div id="juego" style="display:none;">
+        <div id="turno"></div>
+        <div id="palabras"></div>
+        <div id="votacion" style="display:none;">
+            <h3>Votación</h3>
+            <div id="opcionesVoto"></div>
+            <div id="palabrasJugadores"></div>
+        </div>
+    </div>
+    <script src="index.js"></script>
+</body>
+</html>

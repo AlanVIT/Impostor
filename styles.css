@@ -1,0 +1,221 @@
+body {
+    min-height: 100vh;
+    margin: 0;
+    font-family: 'Montserrat', 'Segoe UI', Arial, sans-serif;
+    background: 
+        linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)),
+        url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1500&q=80');
+    background-size: cover;
+    background-position: center;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    font-size: 3rem;
+    margin-top: 40px;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    text-shadow: 0 4px 16px #000, 0 1px 0 #1e7c1e;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+h1::before {
+    content: "⚽";
+    font-size: 2.2rem;
+    margin-right: 18px;
+    filter: drop-shadow(0 2px 2px #000);
+    animation: bounce 1.2s infinite alternate;
+}
+@keyframes bounce {
+    to { transform: translateY(-8px);}
+}
+
+#setup, #juego {
+    background: rgba(34, 51, 34, 0.92);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px 0 rgba(0,0,0,0.35);
+    padding: 32px 28px 24px 28px;
+    margin-top: 24px;
+    min-width: 340px;
+    max-width: 95vw;
+    transition: box-shadow 0.3s;
+}
+
+label {
+    font-weight: 600;
+    color: #b6ffb6;
+    letter-spacing: 1px;
+    font-size: 1.1em;
+}
+
+input[type="text"], select {
+    margin: 10px 0 18px 0;
+    padding: 10px 12px;
+    border-radius: 7px;
+    border: none;
+    font-size: 1.1em;
+    width: 90%;
+    background: #eaffea;
+    color: #1e3d1e;
+    font-family: inherit;
+    box-shadow: 0 2px 8px #0002;
+    outline: none;
+    transition: box-shadow 0.2s;
+}
+input[type="text"]:focus, select:focus {
+    box-shadow: 0 0 0 2px #1e7c1e;
+}
+
+button {
+    background: linear-gradient(90deg, #1e7c1e 60%, #3ad13a 100%);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 12px 28px;
+    font-size: 1.1em;
+    font-weight: bold;
+    letter-spacing: 1px;
+    margin: 12px 0 0 0;
+    cursor: pointer;
+    box-shadow: 0 2px 8px #0003;
+    transition: background 0.2s, transform 0.1s;
+}
+button:hover {
+    background: linear-gradient(90deg, #3ad13a 60%, #1e7c1e 100%);
+    transform: scale(1.04);
+}
+
+#turno, #palabras, #votacion {
+    margin-top: 18px;
+}
+
+#turno h2 {
+    color: #ffe066;
+    font-size: 2em;
+    margin-bottom: 0.2em;
+    text-shadow: 0 2px 8px #000;
+}
+
+#turno p {
+    font-size: 1.1em;
+    color: #fff;
+    background: #1e7c1e;
+    padding: 10px 18px;
+    border-radius: 8px;
+    margin: 0 0 18px 0;
+    box-shadow: 0 2px 8px #0002;
+}
+
+#palabras h3, #votacion h3 {
+    color: #3ad13a;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 8px #000;
+}
+
+#palabras ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px 0;
+}
+#palabras li {
+    background: rgba(255,255,255,0.07);
+    margin: 7px 0;
+    padding: 8px 14px;
+    border-radius: 6px;
+    font-size: 1.1em;
+    color: #fff;
+    box-shadow: 0 1px 4px #0002;
+}
+
+#opcionesVoto button {
+    margin: 6px 8px 6px 0;
+    padding: 10px 18px;
+    font-size: 1em;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #ff5252 60%, #ffb347 100%);
+    color: #fff;
+    font-weight: bold;
+    border: none;
+    box-shadow: 0 2px 8px #0002;
+    transition: background 0.2s, transform 0.1s;
+}
+#opcionesVoto button:hover {
+    background: linear-gradient(90deg, #ffb347 60%, #ff5252 100%);
+    transform: scale(1.06);
+}
+
+#opcionesVoto h4 {
+    color: #ffe066;
+    margin-bottom: 10px;
+    text-shadow: 0 2px 8px #000;
+}
+
+.resultado-final {
+    background: rgba(30, 124, 30, 0.93);
+    border-radius: 16px;
+    padding: 32px 18px;
+    margin: 40px auto 0 auto;
+    box-shadow: 0 4px 32px #000a;
+    text-align: center;
+    color: #fff;
+}
+.resultado-final h2 {
+    font-size: 2.1em;
+    margin: 0 0 18px 0;
+    text-shadow: 0 2px 8px #000;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+    background: #1e7c1e;
+}
+::-webkit-scrollbar-thumb {
+    background: #3ad13a;
+    border-radius: 5px;
+}
+
+.rol-borroso .rol-texto {
+    filter: blur(8px) brightness(1.2);
+    user-select: none;
+    transition: filter 0.3s;
+    cursor: pointer;
+}
+.rol-borroso {
+    cursor: pointer;
+    background: #1e7c1e;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px #0002;
+    position: relative;
+}
+.rol-borroso:hover .rol-texto {
+    filter: blur(4px) brightness(1.2);
+}
+.toque-revelar {
+    color: #ffe066;
+    font-size: 0.98em;
+    opacity: 0.85;
+    margin-top: 4px;
+    display: block;
+    font-style: italic;
+}
+
+@media (max-width: 600px) {
+    #setup, #juego {
+        min-width: unset;
+        padding: 18px 4vw 14px 4vw;
+    }
+    h1 {
+        font-size: 2.5rem;
+    }
+    button {
+        width: 100%;
+        padding: 10px 0;
+    }
+}
