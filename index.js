@@ -1,198 +1,301 @@
-let jugadores = [];
-// Diccionario de categorías y futbolistas
-const categorias = {
-    "futbol general": [
-        // Incluye TODOS los jugadores de todas las categorías (ver abajo)
-        // Se arma automáticamente al final de este bloque
-    ],
-    "futbol argentino": [
-        // Solo jugadores que HOY juegan en la Liga Argentina (ejemplo, 2024-2025)
-        "adrián 'maravilla' martínez", "braian romero", "claudio aquino", "edinson cavani", "ever banega", "facundo colidio", "franco jara", "franco mastantuono", "gabriel ávalos", "ignacio malcorra", "marcelino moreno", "mateo pellegrino", "miguel borja", "miguel merentiel", "milton giménez", "sebastián villa", "thiago fernández", "walter bou", "alejo véliz", "ángel di maría", "giuliano galoppo", "valentin gomez"
-    ],
-    "futbol retro": [
-        "pele", "maradona", "platini", "cruyff", "baggio", "garrincha", "di stefano", "puskas", "eusebio", "beckenbauer", "muller", "kempes", "passarella", "socrates", "matthaus", "van basten", "romario", "bobby charlton", "lev yashin", "rivelino", "gerson", "falcao", "hugo sanchez"
-    ],
-    "seleccion argentina": [
-        "messi", "maradona", "batistuta", "riquelme", "tevez", "crespo", "veron", "simeone", "redondo", "goycochea", "fillol", "pumpido", "passarella", "ruggeri", "ayala", "sorin", "zanetti", "burdisso", "milito", "palermo", "ortega", "gallardo", "enzo perez", "di maria", "lautaro martinez", "julian alvarez", "emiliano martinez", "otamendi", "tagliafico", "paredes", "de paul", "mac allister"
-    ],
-    "champions league": [
-        "ronaldo", "messi", "benzema", "modric", "casillas", "ramos", "xavi", "iniesta", "puyol", "neuer", "robben", "ribery", "lewandowski", "kroos", "bale", "suarez", "griezmann", "mbappe", "haaland", "salah", "mane", "de bruyne", "aguero", "ter stegen", "courtois", "alisson", "van dijk", "robertson", "alexander-arnold", "kante", "jorginho"
-    ],
-    "libertadores": [
-        // Históricos de toda la competición, de varios países
-        // Argentina
-        "juan roman riquelme", "martin palermo", "ariel ortega", "enrique bochini", "oscar ruggeri", "roberto perfumo", "ramon diaz", "francescoli", "carlos tevez", "gabriel batistuta", "julio cesar falcioni", "angel cappa", "ricardo bochini", "norberto alonso", "daniel passarella", "amadeo carrizo", "roberto abbondanzieri", "gaston sessa",
-        // Brasil
-        "pele", "zico", "romario", "socrates", "cafu", "roberto carlos", "juninho pernambucano", "dida", "rogerio ceni", "gabigol", "everton ribeiro", "arrascaeta", "ricardo oliveira", "alex", "ricardinho", "juninho paulista", "edmundo", "tita", "jairzinho", "tostao", "rivelino",
-        // Uruguay
-        "enzo francescoli", "fernando morena", "alvaro recoba", "rodrigo lopez", "sergio martinez", "pablo bengoechea", "walter pandiani",
-        // Chile
-        "elias figueroa", "carlos caszely", "jorge valdivia", "esteban paredes", "jaime riveros",
-        // Colombia
-        "carlos valderrama", "faustino asprilla", "oscar cordoba", "freddy rincón", "james rodriguez", "juan fernando quintero", "miguel calero",
-        // Paraguay
-        "roque santa cruz", "jose luis chilavert", "celso ayala", "julio dos santos", "nelson haedo valdez", "francisco arce",
-        // Otros históricos
-        "alberto spencer", "julio cesar romero", "aristizabal", "ricardo pavoni", "julio cesar uribe", "jorge fosatti", "jorge bermudez", "andres d'alessandro", "jorge campos", "oswaldo sánchez"
-    ]
-};
+// index.js
+document.addEventListener("DOMContentLoaded", () => {
+  const socket = io();
 
-// Construir futbol general con todos los jugadores de todas las categorías (sin duplicados)
-categorias["futbol general"] = Array.from(
-    new Set(
-        Object.keys(categorias)
-            .filter(cat => cat !== "futbol general")
-            .flatMap(cat => categorias[cat])
-    )
-);
+  let salaActual = null;
+  let usuarioActual = "";
+  let soyAdmin = false;
 
-let roles = {};
-let palabras = {};
-let turno = 0;
-let impostor = "";
-let votacionTurno = 0; // Para controlar el turno de votación
+  // Estado global del cliente
+  let MI_SOCKET_ID = null;
+  let MI_ROL = { esImpostor: false, jugador: "" }; // jugador: palabra real o señuelo
+  let ULTIMO_ESTADO = { estado: "esperando", jugadores: [], turnoId: null, palabras: [] };
+  let pedirEstadoTimer = null; // reintentos hasta que llegue turnoId
 
-function cargarCategorias() {
-    const select = document.getElementById("categoria");
-    select.innerHTML = "";
-    Object.keys(categorias).forEach(cat => {
-        const option = document.createElement("option");
-        option.value = cat;
-        option.textContent = cat.charAt(0).toUpperCase() + cat.slice(1);
-        select.appendChild(option);
-    });
-}
+  // ---------- helpers de UI ----------
+  function mostrarCrearSala() {
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("crearSala").style.display = "block";
+  }
+  function volverLobby() {
+    document.getElementById("crearSala").style.display = "none";
+    document.getElementById("lobby").style.display = "block";
+  }
+  function togglePassword() {
+    const tipo = document.getElementById("tipoSala").value;
+    document.getElementById("passwordSalaDiv").style.display = tipo === "privada" ? "block" : "none";
+  }
+  function mostrarSala() {
+    document.getElementById("lobby").style.display = "none";
+    document.getElementById("crearSala").style.display = "none";
+    document.getElementById("juego").style.display = "none";
+    const setup = document.getElementById("setup");
+    if (setup) setup.style.display = "none";
+    document.getElementById("sala").style.display = "block";
+  }
 
-function iniciarJuego() {
-    jugadores = document.getElementById("jugadores").value
-        .split(",")
-        .map(j => j.trim().replace(/['"\n\r]/g, "")) // Limpia comillas y saltos de línea
-        .filter(j => j)
-        .map(nombre => ({ nombre, votos: 0 }));
-    const categoriaSeleccionada = document.getElementById("categoria").value;
-    futbolistas = categorias[categoriaSeleccionada] || [];
-    if (jugadores.length < 3 || futbolistas.length === 0) {
-        alert("Agrega al menos 3 jugadores y selecciona una categoría.");
-        return;
-    }
-    asignarRoles();
-    document.getElementById("setup").style.display = "none";
-    document.getElementById("juego").style.display = "block";
-    palabras = {};
-    turno = 0;
-    votacionTurno = 0;
-    mostrarTurno();
-}
+  // ---------- crear / listar / unirse ----------
+  function crearSala(e) {
+    e.preventDefault();
+    const nombre = document.getElementById("nombreSala").value;
+    usuarioActual = document.getElementById("usuarioSala").value;
+    const publica = document.getElementById("tipoSala").value === "publica";
+    const password = publica ? null : document.getElementById("passwordSala").value;
+    const maxJugadores = parseInt(document.getElementById("maxJugadoresSala").value, 10);
+    const impostores = parseInt(document.getElementById("impostoresSala").value, 10);
 
-function asignarRoles() {
-    let futbolista = futbolistas[Math.floor(Math.random() * futbolistas.length)];
-    let impostorObj = jugadores[Math.floor(Math.random() * jugadores.length)];
-    impostor = impostorObj.nombre;
-    roles = {};
-    jugadores.forEach(j => {
-        roles[j.nombre] = (j.nombre === impostor) ? "IMPOSTOR" : futbolista;
-    });
-    alert("Roles asignados. Cada jugador debe ver su rol en secreto.");
-}
-
-function mostrarTurno() {
-    if (turno >= jugadores.length) {
-        mostrarPalabras();
-        return;
-    }
-    let jugador = jugadores[turno].nombre;
-    let div = document.getElementById("turno");
-
-    // Mostrar palabras previas
-    let palabrasPrevias = "";
-    if (turno > 0) {
-        palabrasPrevias = "<div style='margin-bottom:14px;'><b>Palabras anteriores:</b><ul style='margin:6px 0 0 0;'>";
-        for (let i = 0; i < turno; i++) {
-            let nombrePrevio = jugadores[i].nombre;
-            palabrasPrevias += `<li><b>${nombrePrevio}:</b> ${palabras[nombrePrevio]}</li>`;
+    socket.emit('crearSala',
+      { nombre, publica, password, maxJugadores, impostores, usuario: usuarioActual },
+      (res) => {
+        if (res.ok) {
+          salaActual = res.id;
+          mostrarSala();
+          socket.emit('pedirInfoSala', salaActual);
+        } else {
+          alert(res.error || "Error al crear sala");
         }
-        palabrasPrevias += "</ul></div>";
-    }
+      }
+    );
+  }
 
-    div.innerHTML = `
-        <h2>Turno de ${jugador}</h2>
-        <p id="rol-revelar" class="rol-borroso" onclick="revelarRol(this)">
-            Tu rol es: <span class="rol-texto">${roles[jugador]}</span> <span style="font-size:0.9em;">(¡No lo muestres!)</span>
-            <br><span class="toque-revelar">(Toca para ver tu rol)</span>
-        </p>
-        ${palabrasPrevias}
-        <input type="text" id="palabra" placeholder="Di una palabra relacionada">
-        <button onclick="guardarPalabra()">Enviar</button>
+  function listarSalas() {
+    socket.emit('listarSalas');
+  }
+
+  function unirseSala(id, publica) {
+    usuarioActual = prompt("Tu nombre:");
+    if (!usuarioActual) return;
+    let password = null;
+    if (!publica) {
+      password = prompt("Contraseña de la sala:");
+      if (!password) return;
+    }
+    socket.emit('unirseSala', { id, password, usuario: usuarioActual }, (res) => {
+      if (res.ok) {
+        salaActual = id;
+        mostrarSala();
+        socket.emit('pedirInfoSala', salaActual);
+      } else {
+        alert(res.error || "No se pudo unir a la sala");
+      }
+    });
+  }
+
+  // ---------- render de lobby ----------
+  socket.on('salasDisponibles', (salas) => {
+    const lista = document.getElementById("salas-lista");
+    if (!lista) return;
+    lista.innerHTML = "";
+    if (salas.length === 0) {
+      lista.innerHTML = "<p>No hay salas disponibles.</p>";
+      return;
+    }
+    salas.forEach(sala => {
+      let btn = `<button onclick="unirseSala('${sala.id}', ${sala.publica})">Unirse</button>`;
+      lista.innerHTML += `<div>
+        <b>${sala.nombre}</b> (${sala.jugadores}/${sala.maxJugadores})
+        ${sala.publica ? "🟢 Pública" : "🔒 Privada"} ${btn}
+      </div>`;
+    });
+  });
+
+  // ---------- info de sala ----------
+  function mostrarSalaInfo(sala) {
+    document.getElementById("nombreSalaActual").innerText = sala.nombre;
+    document.getElementById("infoSala").innerHTML = `
+      <b>Jugadores:</b> ${sala.jugadores.length}/${sala.maxJugadores} <br>
+      <b>Impostores:</b> ${sala.impostores} <br>
+      <b>Tipo:</b> ${sala.publica ? "Pública" : "Privada"} <br>
+      <b>Admin:</b> ${sala.jugadores.find(j => j.id === sala.admin)?.nombre || "?"}
     `;
-}
+    document.getElementById("jugadoresSala").innerHTML = "<b>Jugadores en la sala:</b><ul>" +
+      sala.jugadores.map(j =>
+        `<li>${j.nombre}${j.id === sala.admin ? " (admin)" : ""}${j.id === socket.id ? " (vos)" : ""}</li>`
+      ).join("") + "</ul>";
 
-// Revela el rol al hacer click
-function revelarRol(element) {
-    element.classList.remove("rol-borroso");
-    let aviso = element.querySelector('.toque-revelar');
-    if (aviso) aviso.style.display = "none";
-}
-
-function guardarPalabra() {
-    let jugador = jugadores[turno].nombre;
-    let palabra = document.getElementById("palabra").value.trim();
-    if (!palabra) {
-        alert("Escribe una palabra.");
-        return;
-    }
-    palabras[jugador] = palabra;
-    turno++;
-    mostrarTurno();
-}
-
-function mostrarPalabras() {
-    document.getElementById("turno").innerHTML = "";
-    let div = document.getElementById("palabras");
-    div.innerHTML = "<h3>Palabras dichas:</h3><ul>" +
-        jugadores.map(j => `<li><b>${j.nombre}:</b> ${palabras[j.nombre]}</li>`).join("") +
-        "</ul><button onclick='iniciarVotacion()'>Votar</button>";
-}
-
-function iniciarVotacion() {
-    document.getElementById("palabras").innerHTML = "";
-    document.getElementById("votacion").style.display = "block";
-    document.getElementById("opcionesVoto").innerHTML = "";
-    votacionTurno = 0;
-    mostrarVotacionTurno();
-}
-
-function mostrarVotacionTurno() {
-    if (votacionTurno >= jugadores.length) {
-        // Fin de la votación, eliminar al más votado
-        let maxVotos = Math.max(...jugadores.map(j => j.votos));
-        let candidatos = jugadores.filter(j => j.votos === maxVotos);
-        let eliminado = candidatos[Math.floor(Math.random() * candidatos.length)].nombre; // desempate aleatorio
-        eliminarJugador(eliminado);
-        return;
-    }
-    let jugadorObj = jugadores[votacionTurno];
-    let opciones = jugadores
-        .filter(j => j.nombre !== jugadorObj.nombre)
-        .map(j => `<button onclick="votarJugador(decodeURIComponent('${encodeURIComponent(j.nombre)}'))">${j.nombre}</button>`)
-        .join(" ");
-    document.getElementById("opcionesVoto").innerHTML = `<h4>${jugadorObj.nombre}, ¿quién crees que es el impostor?</h4>${opciones}<br>`;
-}
-
-function votarJugador(nombreVotado) {
-    let jugador = jugadores.find(j => j.nombre === nombreVotado);
-    if (jugador) jugador.votos += 1;
-    votacionTurno++;
-    mostrarVotacionTurno();
-}
-
-function eliminarJugador(nombre) {
-    document.getElementById("votacion").style.display = "none";
-    const juegoDiv = document.getElementById("juego");
-    let mensaje = "";
-    if (roles[nombre] === "IMPOSTOR") {
-        mensaje = `<div class="resultado-final"><h2>🎉 ¡${nombre} era el impostor! ¡Ganaron los demás! 🎉</h2></div>`;
+    if (sala.admin === socket.id) {
+      document.getElementById("accionesAdmin").innerHTML = `<button onclick="iniciarJuegoOnline()">Iniciar juego</button>`;
+      soyAdmin = true;
     } else {
-        mensaje = `<div class="resultado-final"><h2>❌ ${nombre} no era el impostor.<br>El impostor era <span style="color:#ff5252">${impostor}</span>.</h2></div>`;
+      document.getElementById("accionesAdmin").innerHTML = "";
+      soyAdmin = false;
     }
-    juegoDiv.innerHTML = mensaje + `<button onclick="location.reload()">Jugar de nuevo</button>`;
-}
+  }
+
+  socket.on('infoSala', (sala) => {
+    salaActual = sala.id;
+    mostrarSala();
+    mostrarSalaInfo(sala);
+  });
+
+  // ---------- acciones admin / cliente ----------
+  function expulsarJugador(idJugador) {
+    socket.emit('expulsarJugador', { sala: salaActual, idJugador });
+  }
+  function iniciarJuegoOnline() {
+    socket.emit('iniciarJuego', { sala: salaActual });
+  }
+  function salirSala() {
+    socket.emit('salirSala', { sala: salaActual });
+    location.reload();
+  }
+
+  // ==============
+  // JUEGO ONLINE
+  // ==============
+  socket.on('connect', () => {
+    MI_SOCKET_ID = socket.id;
+  });
+
+  // Rol privado a cada jugador
+  socket.on('tuRol', ({ esImpostor, jugador }) => {
+    MI_ROL = { esImpostor, jugador }; // jugador = palabra real (no impostor) o señuelo (impostor)
+    if (document.getElementById("juego").style.display === "block") {
+      renderJuego();
+    }
+  });
+
+  // Arranque general (pedimos snapshot del estado)
+  socket.on('juegoIniciado', () => {
+    document.getElementById("sala").style.display = "none";
+    document.getElementById("juego").style.display = "block";
+    const root = document.getElementById("juego");
+    root.innerHTML = `<p><i>Cargando estado de la ronda...</i></p>`;
+
+    // Pedimos estado y reintentamos hasta que llegue turnoId
+    socket.emit('pedirEstadoJuego', { sala: salaActual });
+    if (pedirEstadoTimer) clearInterval(pedirEstadoTimer);
+    pedirEstadoTimer = setInterval(() => {
+      if (ULTIMO_ESTADO && ULTIMO_ESTADO.turnoId) {
+        clearInterval(pedirEstadoTimer);
+        pedirEstadoTimer = null;
+        return;
+      }
+      socket.emit('pedirEstadoJuego', { sala: salaActual });
+    }, 400);
+  });
+
+  // Estado compartido (turno, palabras, jugadores)
+  socket.on('estadoJuego', (estado) => {
+    ULTIMO_ESTADO = estado;
+    if (pedirEstadoTimer) { clearInterval(pedirEstadoTimer); pedirEstadoTimer = null; }
+    renderJuego(); // SIEMPRE render acá
+  });
+
+  // Fase de votación (placeholder)
+  socket.on('faseVotacion', ({ palabras }) => {
+    const cont = document.getElementById('juego');
+    cont.innerHTML = `
+      <h2>Fase de votación</h2>
+      <div id="chatPalabras">
+        ${palabras.map(p => `<div><b>${p.nombre}:</b> ${p.palabra}</div>`).join('')}
+      </div>
+      <p>(Pendiente implementar: UI de voto)</p>
+    `;
+  });
+
+  // Feedback corto
+  socket.on('toast', ({ tipo, msg }) => {
+    alert(msg);
+  });
+
+  // expulsado por admin
+  socket.on('expulsado', () => {
+    alert("Fuiste expulsado de la sala.");
+    location.reload();
+  });
+
+  // ---------- UI de juego mínima ----------
+  function renderJuego() {
+    const root = document.getElementById('juego');
+    const { estado, jugadores, turnoId, palabras } = ULTIMO_ESTADO;
+
+    // Si todavía no llegó el turno, mostramos placeholder y salimos
+    if (!turnoId && estado !== 'votacion') {
+      root.innerHTML = `<p><i>Cargando estado de la ronda...</i></p>`;
+      return;
+    }
+
+    const jugadorTurno = jugadores.find(j => j.id === turnoId);
+    const esMiTurno = (turnoId === MI_SOCKET_ID);
+    const nombreTurno = jugadorTurno ? jugadorTurno.nombre : "...";
+
+    // Log de depuración
+    console.log(">> TURNO ACTUAL:", turnoId, jugadorTurno ? jugadorTurno.nombre : "???", "| soy:", MI_SOCKET_ID);
+
+    // Cabecera: tu “jugador” (palabra real o señuelo)
+    
+    
+    const rolHtml = `
+      <div id="miRol" style="margin-bottom:12px; padding:10px 14px; background:#1e7c1e; border-radius:8px;">
+        ${MI_ROL.esImpostor == false ?`<b>Tu jugador es:</b> <span>${MI_ROL.jugador || '...'}</span>` : `<b style="color:red;">sos el impostor</b>`}
+      </div>
+    `;
+
+    // Chat de palabras (todos lo ven)
+    const chatHtml = `
+      <div id="chatPalabras" style="margin-bottom:12px;">
+        <h3>Palabras</h3>
+        ${palabras.length === 0
+          ? '<i>Aún no hay palabras</i>'
+          : palabras.map(p => `<div><b>${p.nombre}:</b> ${p.palabra}</div>`).join('')}
+      </div>
+    `;
+
+    // Turno actual EXACTO como pediste
+    let turnoHtml = '';
+    if (estado === 'turnos') {
+      turnoHtml = esMiTurno
+        ? `
+          <div id="turno">
+            <h2>Es tu turno</h2>
+            <div style="margin-top:8px;">
+              <input id="inputPalabra" type="text" placeholder="Escribe tu palabra" />
+              <button id="btnEnviarPalabra">Enviar</button>
+            </div>
+          </div>
+        `
+        : `
+          <div id="turno">
+            <h2>Es turno de ${nombreTurno}</h2>
+            <p style="margin:6px 0;">Esperá tu turno…</p>
+          </div>
+        `;
+    } else if (estado === 'votacion') {
+      turnoHtml = `<h2>Pasando a votación...</h2>`;
+    } else {
+      turnoHtml = `<h2>Esperando para comenzar...</h2>`;
+    }
+
+    root.innerHTML = rolHtml + chatHtml + turnoHtml;
+
+    // Si es mi turno, bind del botón
+    const btn = document.getElementById('btnEnviarPalabra');
+    if (btn) {
+      const inp = document.getElementById('inputPalabra');
+      inp?.focus();
+      btn.addEventListener('click', () => {
+        const val = (inp?.value || '').trim();
+        if (!val) return alert('Escribe una palabra.');
+        socket.emit('enviarPalabra', { sala: salaActual, palabra: val });
+        inp.value = '';
+        btn.disabled = true; // evita doble envío; el server avanza y re-renderiza en todos
+      });
+    }
+  }
+
+  // ---------- bootstrap ----------
+  listarSalas();
+
+  // ---------- exponer a window (para HTML) ----------
+  window.mostrarCrearSala = mostrarCrearSala;
+  window.volverLobby = volverLobby;
+  window.togglePassword = togglePassword;
+  window.crearSala = crearSala;
+  window.unirseSala = unirseSala;
+  window.mostrarSala = mostrarSala;
+  window.mostrarSalaInfo = mostrarSalaInfo;
+  window.expulsarJugador = expulsarJugador;
+  window.iniciarJuegoOnline = iniciarJuegoOnline;
+  window.salirSala = salirSala;
+});

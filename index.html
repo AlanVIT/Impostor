@@ -7,22 +7,52 @@
 </head>
 <body>
     <h1>El Impostor</h1>
-    <div id="setup">
-        <label>Jugadores (separados por coma):</label>
-        <input type="text" id="jugadores" placeholder="Ana,Luis,Marta,Juan">
-        <br>
-        <label>Categoría:</label>
-        <select id="categoria">
-            <option value="futbol general">Futbol general</option>
-            <option value="futbol argentino">Futbol argentino</option>
-            <option value="futbol retro">Futbol retro</option>
-            <option value="seleccion argentina">Seleccion argentina</option>
-            <option value="champions league">Champions league</option>
-            <option value="libertadores">Libertadores</option>
-        </select>
-        <br>
-        <button onclick="iniciarJuego()">Iniciar Juego</button>
+    <div id="lobby" style="display:block;">
+        <h2>Salas disponibles</h2>
+        <div id="salas-lista"></div>
+        <button onclick="mostrarCrearSala()">Crear sala</button>
     </div>
+
+    <div id="crearSala" style="display:none;">
+        <h2>Crear sala</h2>
+        <form onsubmit="crearSala(event)">
+            <label>Nombre de la sala:</label>
+            <input type="text" id="nombreSala" required>
+            <br>
+            <label>Tu nombre:</label>
+            <input type="text" id="usuarioSala" required>
+            <br>
+            <label>Tipo:</label>
+            <select id="tipoSala" onchange="togglePassword()">
+                <option value="publica">Pública</option>
+                <option value="privada">Privada</option>
+            </select>
+            <br>
+            <div id="passwordSalaDiv" style="display:none;">
+                <label>Contraseña:</label>
+                <input type="password" id="passwordSala">
+                <br>
+            </div>
+            <label>Máximo de jugadores:</label>
+            <input type="number" id="maxJugadoresSala" min="3" max="12" value="6" required>
+            <br>
+            <label>Cantidad de impostores:</label>
+            <input type="number" id="impostoresSala" min="1" max="3" value="1" required>
+            <br>
+            <button type="submit">Crear</button>
+            <button type="button" onclick="volverLobby()">Volver</button>
+        </form>
+    </div>
+
+    <div id="sala" style="display:none;">
+        <h2 id="nombreSalaActual"></h2>
+        <div id="infoSala"></div>
+        <div id="jugadoresSala"></div>
+        <div id="accionesAdmin"></div>
+        <button onclick="salirSala()">Salir</button>
+    </div>
+
+    <!-- Para el juego (cuando se inicia) -->
     <div id="juego" style="display:none;">
         <div id="turno"></div>
         <div id="palabras"></div>
@@ -32,6 +62,13 @@
             <div id="palabrasJugadores"></div>
         </div>
     </div>
+
+    <!-- Solo si usas el modo local, puedes dejarlo oculto o eliminarlo si solo usas salas online -->
+    <div id="setup" style="display:none;">
+        <!-- Aquí iría el setup local -->
+    </div>
+    
+    <script src="/socket.io/socket.io.js"></script>
     <script src="index.js"></script>
 </body>
 </html>
