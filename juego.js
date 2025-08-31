@@ -22,7 +22,7 @@ const categorias = {
     "adrián 'maravilla' martínez", "braian romero", "claudio aquino", "edinson cavani",
     "ever banega", "facundo colidio", "franco jara", "franco mastantuono", "gabriel ávalos",
     "ignacio malcorra", "marcelino moreno", "mateo pellegrino", "miguel borja", "miguel merentiel",
-    "milton giménez", "sebastián villa", "thiago fernández", "walter bou", "alejo véliz",
+    "milton giménez", "sebastián villa", "walter bou", "alejo véliz",
     "ángel di maría", "giuliano galoppo", "valentin gomez"
   ],
   "futbol retro": [

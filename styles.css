@@ -219,3 +219,6 @@ button:hover {
         padding: 10px 0;
     }
 }
+
+#catCrear label { color: #e8ffe8; opacity: .9; }
+#catCrear input[type="checkbox"] { margin-right: 6px; }

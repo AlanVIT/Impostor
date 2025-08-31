@@ -1,5 +1,78 @@
 // index.js
 document.addEventListener("DOMContentLoaded", () => {
+  const categorias = {
+    "futbol general": [], // se completa en runtime
+    "futbol argentino": [
+      "adrián 'maravilla' martínez","braian romero","claudio aquino","edinson cavani",
+      "ever banega","facundo colidio","franco jara","gabriel ávalos",
+      "ignacio malcorra","marcelino moreno","mateo pellegrino","miguel borja","miguel merentiel",
+      "milton giménez","sebastián villa","walter bou","alejo véliz",
+      "ángel di maría","giuliano galoppo"
+    ],
+    "futbol retro": [
+      "pele","maradona","platini","cruyff","baggio","garrincha","di stefano","puskas","eusebio",
+      "beckenbauer","muller","kempes","passarella","socrates","matthaus","van basten","romario",
+      "bobby charlton","lev yashin","rivelino","gerson","falcao","hugo sanchez"
+    ],
+    "seleccion argentina": [
+      "messi","maradona","batistuta","riquelme","tevez","crespo","veron","simeone","redondo",
+      "goycochea","fillol","pumpido","passarella","ruggeri","ayala","sorin","zanetti","burdisso",
+      "milito","palermo","ortega","gallardo","enzo perez","di maria","lautaro martinez",
+      "julian alvarez","emiliano martinez","otamendi","tagliafico","paredes","de paul","mac allister"
+    ],
+    "champions league": [
+      "ronaldo","messi","benzema","modric","casillas","ramos","xavi","iniesta","puyol","neuer",
+      "robben","ribery","lewandowski","kroos","bale","suarez","griezmann","mbappe","haaland",
+      "salah","mane","de bruyne","aguero","ter stegen","courtois","alisson","van dijk",
+      "robertson","alexander-arnold","kante","jorginho"
+    ],
+    "libertadores": [
+      // Argentina
+      "juan roman riquelme","martin palermo","ariel ortega","enrique bochini","oscar ruggeri",
+      "roberto perfumo","ramon diaz","francescoli","carlos tevez","gabriel batistuta",
+      "julio cesar falcioni","angel cappa","ricardo bochini","norberto alonso","daniel passarella",
+      "amadeo carrizo","roberto abbondanzieri","gaston sessa",
+      // Brasil
+      "pele","zico","romario","socrates","cafu","roberto carlos","juninho pernambucano","dida",
+      "rogerio ceni","gabigol","everton ribeiro","arrascaeta","ricardo oliveira","alex",
+      "ricardinho","juninho paulista","edmundo","tita","jairzinho","tostao","rivelino",
+      // Uruguay
+      "enzo francescoli","fernando morena","alvaro recoba","rodrigo lopez","sergio martinez",
+      "pablo bengoechea","walter pandiani",
+      // Chile
+      "elias figueroa","carlos caszely","jorge valdivia","esteban paredes","jaime riveros",
+      // Colombia
+      "carlos valderrama","faustino asprilla","oscar cordoba","freddy rincón","james rodriguez",
+      "juan fernando quintero","miguel calero",
+      // Paraguay
+      "roque santa cruz","jose luis chilavert","celso ayala","julio dos santos",
+      "nelson haedo valdez","francisco arce",
+      // Otros
+      "alberto spencer","julio cesar romero","aristizabal","ricardo pavoni","julio cesar uribe",
+      "jorge fosatti","jorge bermudez","andres d'alessandro","jorge campos","oswaldo sánchez"
+    ]
+  };
+
+  // Completar "futbol general" con la unión de todas (excepto sí misma)
+  categorias["futbol general"] = Object.entries(categorias)
+  .filter(([k]) => k !== "futbol general")
+  .flatMap(([, arr]) => arr);
+
+  // Render de categorías en crear sala
+  const contCatCrear = document.getElementById('catCrear');
+  if (contCatCrear) {
+    const keys = Object.keys(categorias);
+    contCatCrear.innerHTML = keys.map(k => `
+      <label style="display:block; margin:6px 0;">
+        <input type="checkbox" class="chk-cat-crear" value="${k}"> ${k}
+      </label>
+    `).join('');
+  }
+  // helper rápido para no repetir document.getElementById
+  function $(id) {
+    return document.getElementById(id);
+  }
+
   const socket = io();
 
   let salaActual = null;
@@ -35,28 +108,38 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ---------- crear / listar / unirse ----------
-  function crearSala(e) {
-    e.preventDefault();
-    const nombre = document.getElementById("nombreSala").value;
-    usuarioActual = document.getElementById("usuarioSala").value;
-    const publica = document.getElementById("tipoSala").value === "publica";
-    const password = publica ? null : document.getElementById("passwordSala").value;
-    const maxJugadores = parseInt(document.getElementById("maxJugadoresSala").value, 10);
-    const impostores = parseInt(document.getElementById("impostoresSala").value, 10);
+function crearSala(e) {
+  e.preventDefault();
 
-    socket.emit('crearSala',
-      { nombre, publica, password, maxJugadores, impostores, usuario: usuarioActual },
-      (res) => {
-        if (res.ok) {
-          salaActual = res.id;
-          mostrarSala();
-          socket.emit('pedirInfoSala', salaActual);
-        } else {
-          alert(res.error || "Error al crear sala");
-        }
-      }
-    );
-  }
+  const nombre = $("nombreSala").value;
+  const usuario = $("usuarioSala").value;     // 👈 definimos la variable
+  const publica = $("tipoSala").value === "publica";
+  const password = publica ? null : $("passwordSala").value;
+  const maxJugadores = parseInt($("maxJugadoresSala").value || "6", 10);
+  const impostores = parseInt($("impostoresSala").value || "1", 10);
+
+  // categorías seleccionadas
+  const categoriasSeleccionadas = [...document.querySelectorAll('.chk-cat-crear:checked')].map(i => i.value);
+
+  socket.emit("crearSala", {
+    nombre,
+    usuario,                 // 👈 ahora sí existe
+    publica,
+    password,
+    maxJugadores,
+    impostores,
+    categoriasSeleccionadas
+  }, (res) => {
+    if (res.ok) {
+      salaActual = res.id;
+      mostrarSala();
+      socket.emit('pedirInfoSala', salaActual);
+    } else {
+      alert(res.error || "No se pudo crear la sala");
+    }
+  });
+}
+
 
   function listarSalas() {
     socket.emit('listarSalas');
@@ -122,11 +205,113 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  socket.on('infoSala', (sala) => {
-    salaActual = sala.id;
-    mostrarSala();
-    mostrarSalaInfo(sala);
-  });
+socket.on('infoSala', (sala) => {
+  if (!sala) return;
+  salaActual = sala.id;
+
+  // 🚦 Si la partida ya está en curso, forzamos la vista de juego aunque aún no tengamos ULTIMO_ESTADO
+  const partEnCurso = sala.estado === 'turnos' || sala.estado === 'votacion_turnos';
+  if (partEnCurso) {
+    document.getElementById("sala").style.display = "none";
+    document.getElementById("juego").style.display = "block";
+    const root = document.getElementById("juego");
+    root.innerHTML = `<p><i>Cargando estado de la ronda...</i></p>`;
+
+    // Pedimos el estado y dejamos que renderJuego lo pinte (espectador no participa)
+    socket.emit('pedirEstadoJuego', { sala: salaActual });
+    return; // ⬅️ no renderizamos lobby
+  }
+
+  // ⤵️ de acá para abajo tu render del lobby como ya lo tenías
+  mostrarSala();
+  // ... (resto de tu código de infoSala)
+});
+
+socket.on('infoSala', (sala) => {
+  if (!sala) return;
+  salaActual = sala.id;
+
+  const salaEl = document.getElementById("sala");
+  const juegoEl = document.getElementById("juego");
+  const root = document.getElementById("juego");
+
+  // ⛳ Si la partida ya está en curso, mostramos la vista de juego y pedimos el estado
+  const enCurso = sala.estado === 'turnos' || sala.estado === 'votacion_turnos';
+  if (enCurso) {
+    if (salaEl) salaEl.style.display = "none";
+    if (juegoEl) juegoEl.style.display = "block";
+    if (root) root.innerHTML = `<p><i>Cargando estado de la ronda...</i></p>`;
+    socket.emit('pedirEstadoJuego', { sala: salaActual });
+    return; // no renderizamos lobby
+  }
+
+  // 🧩 Render del LOBBY (esperando inicio)
+  if (salaEl) salaEl.style.display = "block";
+  if (juegoEl) juegoEl.style.display = "none";
+
+  // Título
+  const adminObj = sala.jugadores.find(j => j.id === sala.admin);
+  document.getElementById("nombreSalaActual").textContent = sala.nombre;
+
+  // Info básica + categorías elegidas (si hay)
+  document.getElementById("infoSala").innerHTML = `
+    <b>Jugadores:</b> ${sala.jugadores.length}/${sala.maxJugadores}<br>
+    <b>Impostores:</b> ${sala.impostores}<br>
+    <b>Tipo:</b> ${sala.publica ? 'Pública' : 'Privada'}<br>
+    <b>Admin:</b> ${adminObj?.nombre || "?"}
+    ${
+      sala.categoriasSeleccionadas?.length
+        ? `<br><b>Categorías elegidas:</b> ${sala.categoriasSeleccionadas.join(", ")}`
+        : ""
+    }
+  `;
+
+  // Lista de jugadores
+  const miId = socket.id;
+  document.getElementById("jugadoresSala").innerHTML =
+    "<ul>" + sala.jugadores
+      .map(j => `<li>${j.nombre}${j.id===sala.admin?" (admin)":""}${j.id===miId?" (vos)":""}</li>`)
+      .join("") + "</ul>";
+
+  // Acciones del admin (checkboxes + iniciar)
+  const acciones = document.getElementById("accionesAdmin");
+  if (sala.admin === miId) {
+    const keys = Object.keys(categorias); // <- debe existir el objeto `categorias` en el cliente
+    acciones.innerHTML = `
+      <h3>Configuración</h3>
+      <div id="bloqueCategorias"></div>
+      <button id="btnIniciar" class="btn">Iniciar juego</button>
+    `;
+
+    // Checkboxes (marcar las ya elegidas si vuelven al lobby)
+    const cont = document.getElementById("bloqueCategorias");
+    cont.innerHTML = `
+      <p>Seleccioná las categorías permitidas:</p>
+      ${keys.map(k => {
+        const checked = (sala.categoriasSeleccionadas || []).includes(k) ? "checked" : "";
+        return `
+          <label style="display:block; margin:6px 0;">
+            <input type="checkbox" class="chk-cat" value="${k}" ${checked}> ${k}
+          </label>
+        `;
+      }).join("")}
+    `;
+
+    // Botón iniciar → envía categorías seleccionadas
+    document.getElementById("btnIniciar").onclick = () => {
+      const seleccionadas = Array.from(document.querySelectorAll(".chk-cat:checked"))
+        .map(i => i.value);
+      if (seleccionadas.length === 0) {
+        alert("Seleccioná al menos una categoría");
+        return;
+      }
+      socket.emit('iniciarJuego', { sala: salaActual, categoriasSeleccionadas: seleccionadas });
+    };
+  } else {
+    acciones.innerHTML = `<i>Esperando al admin…</i>`;
+  }
+});
+
 
   // ---------- acciones admin / cliente ----------
   function expulsarJugador(idJugador) {
@@ -184,20 +369,70 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Fase de votación (placeholder)
   socket.on('faseVotacion', ({ palabras }) => {
-    const cont = document.getElementById('juego');
-    cont.innerHTML = `
-      <h2>Fase de votación</h2>
-      <div id="chatPalabras">
-        ${palabras.map(p => `<div><b>${p.nombre}:</b> ${p.palabra}</div>`).join('')}
-      </div>
-      <p>(Pendiente implementar: UI de voto)</p>
-    `;
+    // Muestra la pantalla de votación
+    const div = document.getElementById("juego");
+    div.innerHTML = `<h2>Votación</h2>
+      <ul>${palabras.map(p => `<li><b>${p.nombre}:</b> ${p.palabra}</li>`).join("")}</ul>
+      <div id="votacionOpciones"></div>`;
+
+    // Opciones de voto
+    socket.emit('pedirEstadoJuego', { sala: salaActual });
+  });
+
+  socket.on('estadoJuego', (estado) => {
+    if (estado === 'votacion_turnos') {
+      const jugadores = ULTIMO_ESTADO.jugadores;
+      const espectadores = ULTIMO_ESTADO.espectadores||[];
+      const setEsp = new Set(espectadores);
+      const activos = jugadores.filter(j=>!setEsp.has(j.id));
+      const esMiTurno = turnoId===MI_SOCKET_ID;
+      const jugadorTurno = jugadores.find(j=>j.id===turnoId);
+
+      const votosConteo = ULTIMO_ESTADO.votosConteo||{};
+      const marcador = activos.map(j=>{
+        const c=votosConteo[j.id]||0;
+        return `<div>${j.nombre}: <b>${c}</b> voto${c===1?'':'s'}</div>`;
+      }).join('');
+
+      let votoHtml = `<div><h3>Votación</h3>${marcador||'<i>Aún sin votos</i>'}</div>`;
+
+      if (esMiTurno && !setEsp.has(MI_SOCKET_ID)) {
+        const opciones = activos.filter(j=>j.id!==MI_SOCKET_ID)
+          .map(j=>`<button class="op-voto" data-id="${j.id}">${j.nombre}</button>`).join(" ");
+        votoHtml+=`<h2>Es tu turno de votar</h2>${opciones}`;
+      } else {
+        votoHtml+=`<h2>Es turno de ${jugadorTurno?jugadorTurno.nombre:'...'} para votar</h2>`;
+      }
+
+      root.innerHTML = rolHtml + chatHtml + votoHtml;
+
+      if (esMiTurno && !setEsp.has(MI_SOCKET_ID)) {
+        root.querySelectorAll('.op-voto').forEach(btn=>{
+          btn.addEventListener('click',()=>{
+            const votedId=btn.getAttribute('data-id');
+            socket.emit('enviarVotoTurno',{sala:salaActual,votedId});
+          });
+        });
+      }
+      return;
+    }
   });
 
   // Feedback corto
   socket.on('toast', ({ tipo, msg }) => {
     alert(msg);
   });
+
+  socket.on('juegoTerminado', ({ motivo, palabras }) => {
+    // mensaje corto
+    alert(motivo);
+    // volver directo a la sala
+    document.getElementById('juego').style.display = 'none';
+    document.getElementById('sala').style.display = 'block';
+    ULTIMO_ESTADO = { estado: 'esperando', jugadores: [], turnoId: null, palabras: [] };
+    socket.emit('pedirInfoSala', salaActual); // refresca lobby de esa sala
+  });
+
 
   // expulsado por admin
   socket.on('expulsado', () => {
@@ -282,6 +517,57 @@ document.addEventListener("DOMContentLoaded", () => {
         btn.disabled = true; // evita doble envío; el server avanza y re-renderiza en todos
       });
     }
+    if (estado === 'votacion_turnos') {
+      const setEspec = new Set(ULTIMO_ESTADO.espectadores || []);
+      const activos = jugadores.filter(j => !setEspec.has(j.id));
+      const esMiTurno = (turnoId === MI_SOCKET_ID);
+      const jugadorTurno = jugadores.find(j => j.id === turnoId);
+      const nombreTurno = jugadorTurno ? jugadorTurno.nombre : '...';
+
+      const tablaVotos = Object.keys(ULTIMO_ESTADO.votosConteo || {}).length
+        ? activos.map(j => {
+            const c = ULTIMO_ESTADO.votosConteo[j.id] || 0;
+            return `<div>${j.nombre}: <b>${c}</b> voto${c===1?'':'s'}</div>`;
+          }).join('')
+        : '<i>Aún sin votos</i>';
+
+      let html = `
+        <div id="miRol" class="panel">
+          <b>${MI_ROL.esImpostor ? 'Sos el impostor' : 'Tu jugador es'}:</b> ${MI_ROL.esImpostor ? '' : (MI_ROL.jugador || '...')}
+        </div>
+        <div class="panel">
+          <h3>Votación (por turnos)</h3>
+          <div style="margin-bottom:8px">${tablaVotos}</div>
+      `;
+
+      if (esMiTurno) {
+        const opciones = activos
+          .filter(j => j.id !== MI_SOCKET_ID)
+          .map(j => `<button class="op-voto" data-id="${j.id}">${j.nombre}</button>`)
+          .join(' ');
+        html += `
+          <h2>Es tu turno de votar</h2>
+          <p>¿Quién creés que es el impostor?</p>
+          <div>${opciones}</div>
+        `;
+      } else {
+        html += `<h2>Es turno de ${nombreTurno} para votar</h2><p>Esperá tu turno…</p>`;
+      }
+
+      html += `</div>`;
+      root.innerHTML = html;
+
+      if (esMiTurno) {
+        root.querySelectorAll('.op-voto').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const votedId = btn.getAttribute('data-id');
+            socket.emit('enviarVotoTurno', { sala: salaActual, votedId });
+          });
+        });
+      }
+      return;
+    }
+
   }
 
   // ---------- bootstrap ----------
